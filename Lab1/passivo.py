@@ -26,7 +26,7 @@ while True:
 	if not msg: break 
 	else:
 	# envia mensagem de resposta
-	novoSock.send(msg)
+	    novoSock.send(msg)
 
 # fecha o socket da conexao
 novoSock.close() 
