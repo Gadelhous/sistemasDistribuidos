@@ -24,7 +24,7 @@ while True:
 	# depois de conectar-se, espera uma mensagem (chamada pode ser BLOQUEANTE))
 	msg = novoSock.recv(1024) # argumento indica a qtde maxima de dados
 	if not msg: break 
-	else: print("chegou")
+	else:
 	# envia mensagem de resposta
 	novoSock.send(msg)
 
