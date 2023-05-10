@@ -26,6 +26,8 @@ def iniciaServidor():
 	# cria o socket 
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Internet( IPv4 + TCP) 
 
+
+	print("Abrindo o servidor na porta " + str(PORT))
 	# vincula a localizacao do servidor
 	sock.bind((HOST, PORT))
 
@@ -62,20 +64,19 @@ def atendeRequisicoes(clisock, endr):
 		#recebe dados do cliente
 		data = clisock.recv(1024) 
 		if not data: # dados vazios: cliente encerrou
-			print(str(endr) + '-> encerrou')
+			print("A conexão com " +str(endr) + ' foi encerrada')
 			clisock.close() # encerra a conexao com o cliente
 			return 
-		print(str(endr) + ': ' + str(data, encoding='utf-8'))
-		interpretarEntrada(str(data, encoding='utf-8'))
-		#chaveLocal = str(data, encoding='utf-8')
-		#dicionario[chaveLocal] = "ABC"
-		#clisock.send(data) # ecoa os dados para o cliente
+		#passando os valores de entrada para a função que decide se será feita uma consulta ou uma escrita
+		feedback = interpretarEntrada(str(data, encoding='utf-8'))
+		clisock.send(feedback.encode('utf-8')) # ecoa os dados para o cliente
 
 def main():
 	'''Inicializa e implementa o loop principal (infinito) do servidor'''
 	clientes=[] #armazena as threads criadas para fazer join
 	sock = iniciaServidor()
 	print("Pronto para receber conexoes...")
+	print("Para realizar remoções, digite  'remover ' seguido da chave desejada")
 	while True:
 		#espera por qualquer entrada de interesse
 		leitura, escrita, excecao = select.select(entradas, [], [])
@@ -97,13 +98,15 @@ def main():
 					sock.close()
 					sys.exit()
 				elif cmd.startswith('remover'):  # Verifica se o comando começa com "remover"
-					print(cmd)
 					chave = cmd.split(' ')[1]  # Separa o valor da chave a ser removida
-					print(chave)
 					remover(chave)
 
 def remover(chave):
-	del dicionario[chave]
+	if chave in dicionario:
+		del dicionario[chave]
+		print("A chave " + chave + " foi removida do dicionário")
+	else:
+		print("A chave " + chave + " não foi encontrada no dicionário")
 
 def adicionar(chave,valor):
 	dicionario[chave] = valor
@@ -112,20 +115,37 @@ def interpretarEntrada(str):
 	tokens = str.strip().split(':')
 
 	if len(tokens) == 1:
-		consulta(tokens[0])
+		return consulta(tokens[0])
 	elif len(tokens) > 1:
 		chave, valores_str = str.strip().split(':')
 		valores = [valor.strip() for valor in valores_str.split(',')]
-		escrita(chave, valores)
-		return "Escrita concluída."
+		return escrita(chave, valores)
+	return "Nenhuma operação foi executada"
 
 def consulta(chave):
-	if(dicionario[chave]):
-		return dicionario[chave]
+	lock.acquire
+	if chave in dicionario:
+		if len(dicionario[chave]) > 1:
+			return "Os valores encontrados na chave " + chave + " foram " + ", ".join(str(valor) for valor in dicionario[chave])
+		else:
+			return "O valor encontrado na chave " + chave + " foi " + str(dicionario[chave][0])
 	else:
-		return "A chave não foi encontrada"
+		return "A chave " + chave + " não foi encontrada no dicionario"
+	lock.release
 
 def escrita(chave,valores):
-	dicionario[chave] = valores
+	if chave in dicionario:
+		lock.acquire
+		dicionario[chave] += valores
+		lock.release
+		return "A chave " + chave + " foi atualizada com o(s) valor(es) inserido(s) "
+	else:
+		lock.acquire
+		dicionario[chave] = valores
+		lock.release
+		if len(valores) > 1:
+			return "A chave " + chave + " foi inicializada com os valores " + ", ".join(valores)
+		else:
+			return "A chave " + chave + " foi inicializada com o valor " + ", ".join(valores)
 
 main()
