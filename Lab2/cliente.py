@@ -19,19 +19,22 @@ def fazRequisicoes(sock):
 	'''Faz requisicoes ao servidor e exibe o resultado.
 	Entrada: socket conectado ao servidor'''
 	print("Caso opte por entrar com chaves e valores, siga o padrão -> chave: valor ")
+	print("Para finalizar esta conexão, digite 'fim'")
 	# le as mensagens do usuario ate ele digitar 'fim'
 	while True:
-		msg = input("Digite uma mensagem :     			('fim' para terminar):")
-		if msg == 'fim': break
+		msg = input("Digite uma mensagem :   	")
+		if msg == 'fim':
+			print("Finalizando conexão com o servidor")
+			break
 
 		# envia a mensagem do usuario para o servidor
 		sock.send(msg.encode('utf-8'))
 
 		#espera a resposta do servidor
-		#msg = sock.recv(1024)
+		msg = sock.recv(1024)
 
 		# imprime a mensagem recebida
-		#print(str(msg, encoding='utf-8'))
+		print(str(msg, encoding='utf-8'))
 
 	# encerra a conexao
 	sock.close()
