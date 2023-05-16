@@ -1,10 +1,12 @@
 #servidor de echo: lado servidor
 #com finalizacao do lado do servidor
 #com multithreading (usa join para esperar as threads terminarem apos digitar 'fim' no servidor)
+#utilizando a biblioteca de json para arquivar o dicionário
 import socket
 import select
 import sys
 import threading
+import json
 
 # define a localizacao do servidor
 HOST = '' # vazio indica que podera receber requisicoes a partir de qq interface de rede da maquina
@@ -17,6 +19,7 @@ conexoes = {}
 #dicionário a ser utilizado para gravar as chaves com valores
 dicionario = {}
 #lock para acesso do dicionario
+#esse cuidado com problemas de concorrência teria sido feito de outra maneira : implementando Manager da biblioteca de multiprocessing
 lock = threading.Lock()
 
 
@@ -77,6 +80,10 @@ def main():
 	sock = iniciaServidor()
 	print("Pronto para receber conexoes...")
 	print("Para realizar remoções, digite  'remover ' seguido da chave desejada")
+	try:
+		lerDoArquivo()
+	except FileNotFoundError:
+		print("O arquivo contendo os dados do dicionário não foi encontrado.")
 	while True:
 		#espera por qualquer entrada de interesse
 		leitura, escrita, excecao = select.select(entradas, [], [])
@@ -94,7 +101,6 @@ def main():
 				if cmd == 'fim': #solicitacao de finalizacao do servidor
 					for c in clientes: #aguarda todas as threads terminarem
 						c.join()
-					print(dicionario)
 					sock.close()
 					sys.exit()
 				elif cmd.startswith('remover'):  # Verifica se o comando começa com "remover"
@@ -103,7 +109,10 @@ def main():
 
 def remover(chave):
 	if chave in dicionario:
+		lock.acquire()
 		del dicionario[chave]
+		escreverNoArquivo()
+		lock.release()
 		print("A chave " + chave + " foi removida do dicionário")
 	else:
 		print("A chave " + chave + " não foi encontrada no dicionário")
@@ -123,29 +132,44 @@ def interpretarEntrada(str):
 	return "Nenhuma operação foi executada"
 
 def consulta(chave):
-	lock.acquire
+	lock.acquire()
 	if chave in dicionario:
 		if len(dicionario[chave]) > 1:
+			lock.release()
 			return "Os valores encontrados na chave " + chave + " foram " + ", ".join(str(valor) for valor in dicionario[chave])
 		else:
+			lock.release()
 			return "O valor encontrado na chave " + chave + " foi " + str(dicionario[chave][0])
 	else:
+		lock.release()
 		return "A chave " + chave + " não foi encontrada no dicionario"
-	lock.release
 
 def escrita(chave,valores):
 	if chave in dicionario:
-		lock.acquire
-		dicionario[chave] += valores
-		lock.release
+		lock.acquire()
+		for valor in valores:
+			if valor not in dicionario[chave]:
+				dicionario[chave].append(valor)
+		escreverNoArquivo()
+		lock.release()
 		return "A chave " + chave + " foi atualizada com o(s) valor(es) inserido(s) "
 	else:
-		lock.acquire
+		lock.acquire()
 		dicionario[chave] = valores
-		lock.release
+		escreverNoArquivo()
+		lock.release()
 		if len(valores) > 1:
 			return "A chave " + chave + " foi inicializada com os valores " + ", ".join(valores)
 		else:
 			return "A chave " + chave + " foi inicializada com o valor " + ", ".join(valores)
+
+def escreverNoArquivo():
+	with open("dicionario.json", "w") as arquivo:
+		json.dump(dicionario, arquivo, indent=4)
+
+def lerDoArquivo():
+	global dicionario
+	with open("dicionario.json", "r") as arquivo:
+		dicionario = json.load(arquivo)
 
 main()
