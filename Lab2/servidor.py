@@ -134,6 +134,7 @@ def interpretarEntrada(str):
 def consulta(chave):
 	lock.acquire()
 	if chave in dicionario:
+		dicionario[chave] = sorted(dicionario[chave])
 		if len(dicionario[chave]) > 1:
 			lock.release()
 			return "Os valores encontrados na chave " + chave + " foram " + ", ".join(str(valor) for valor in dicionario[chave])
@@ -142,7 +143,7 @@ def consulta(chave):
 			return "O valor encontrado na chave " + chave + " foi " + str(dicionario[chave][0])
 	else:
 		lock.release()
-		return "A chave " + chave + " não foi encontrada no dicionario"
+		return "[]  -> A chave " + chave + " não foi encontrada no dicionario"
 
 def escrita(chave,valores):
 	if chave in dicionario:
@@ -150,12 +151,14 @@ def escrita(chave,valores):
 		for valor in valores:
 			if valor not in dicionario[chave]:
 				dicionario[chave].append(valor)
+		dicionario[chave] = sorted(dicionario[chave])
 		escreverNoArquivo()
 		lock.release()
 		return "A chave " + chave + " foi atualizada com o(s) valor(es) inserido(s) "
 	else:
 		lock.acquire()
 		dicionario[chave] = valores
+		dicionario[chave] = sorted(dicionario[chave])
 		escreverNoArquivo()
 		lock.release()
 		if len(valores) > 1:
